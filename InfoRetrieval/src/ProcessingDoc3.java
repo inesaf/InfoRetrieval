@@ -50,6 +50,7 @@ public class ProcessingDoc3 {
 			count = getCount(word, invertedIndex) + 1;  
 			invertedIndex.put(word, count); 	
 		}
+		
 	}
 
 
