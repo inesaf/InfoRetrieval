@@ -40,6 +40,7 @@ public class ProcessingDoc {
 		}
 	}
 
+
 	/**
 	 * Processing documents gathered into Repository defined by the path
 	 */
@@ -53,9 +54,18 @@ public class ProcessingDoc {
 		readWordDoc(invertedIndex, dictionary, filesList);  
 		//printInvertedIndex(invertedIndex); 
 		//printMap(dictionary);
+		Scanner in = new Scanner(System.in);
+		System.out.println("Do you want to remove the most common words of the inverted index? Y/N");
+		String c = in.nextLine();
+		boolean removeCommonWords = false;
+		if(c.equalsIgnoreCase("y"))
+			removeCommonWords = true;
+		
 		try {
-			printInvertedIndexToFile(invertedIndex);
-			printDicToFile(dictionary);
+			ArrayList<String> listCommonWords = printDicToFile(dictionary, removeCommonWords);
+			System.out.println(listCommonWords.toString());
+			printInvertedIndexToFile(invertedIndex, listCommonWords);
+			
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -64,6 +74,7 @@ public class ProcessingDoc {
 		invertedIndex.clear();
 
 	}
+
 
 	/**
 	 * Document tokenization where each token/word is added to the inverted index and dictionary 
@@ -107,7 +118,8 @@ public class ProcessingDoc {
 	public static void putIntoStructures(Map<String, List<Doc>> invertedIndex, Map<String, Integer> dictionary, String line, int docID) {
 
 		for (String word : line.split("\\W+")) {
-			String key = word.toLowerCase();
+			String _word = word.replaceAll("_", ""); //includes the case of _word_ e.g.
+			String key = _word.toLowerCase();
 			totalNumWords++;
 			List<Doc> postings = invertedIndex.get(key);
 
@@ -142,11 +154,13 @@ public class ProcessingDoc {
 		
 		return null;
 	}
+	
+	
 
 	/**
 	 * Print the inverted index into a file  
 	 */
-	private static void printInvertedIndexToFile(Map<String, List<Doc>> invertedIndex) throws IOException {
+	private static void printInvertedIndexToFile(Map<String, List<Doc>> invertedIndex, ArrayList<String> listCommonWords) throws IOException {
 
 		File fout = new File("inverted_index.txt");
 		FileOutputStream fos = new FileOutputStream(fout);
@@ -154,14 +168,20 @@ public class ProcessingDoc {
 		BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(fos));
 
 		for(String key : invertedIndex.keySet()){
-			bw.write(key + "->");
+			if(listCommonWords.contains(key))
+				continue;
+			bw.write(key + " -> ");
 			List<Doc> postings = invertedIndex.get(key);
 			for(Doc d : postings)
-				bw.write(d.getID() + ":" + d.getFrequency() + " ");
+				bw.write(d.getID() + " : " + d.getFrequency() + " ");
 			bw.newLine();
-		}  
-		System.out.printf("\nTotal number of words: %15d\n", totalNumWords);
-		System.out.printf("\nTotal number distinct words: %15d	%.2f%%\n", invertedIndex.size(), (invertedIndex.size()*100.0/totalNumWords));  
+		}
+		int commonWords = listCommonWords.size();
+		int distinctWords = invertedIndex.size()-commonWords;
+		
+		System.out.printf("\nTotal number of words: %10d\n", totalNumWords);
+		System.out.printf("Total number of common words considered: %10d\n", commonWords);
+		System.out.printf("Total number distinct words (already filtered): %10d	%3.2f%%\n", distinctWords, (distinctWords*100.0/totalNumWords));  
 
 		bw.close();
 	}
@@ -195,13 +215,25 @@ public class ProcessingDoc {
 
 	/**
 	 * Print dictionary of words and collection frequency into a file  
+	 * @param removeCommonWords 
 	 */
-	private static void printDicToFile(Map<String, Integer> dic) throws FileNotFoundException {
+	private static ArrayList<String> printDicToFile(Map<String, Integer> dic, boolean removeCommonWords) throws FileNotFoundException {
 		File fout = new File("dictionary.txt");
 		FileOutputStream fos = new FileOutputStream(fout);
 		BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(fos));
 		Map<String, Integer> sortedDic = sortByComparator(dic);
+		
+		double numCommonWords = 0;
+		ArrayList<String> listCommonWords = new ArrayList<String>();
+		if(removeCommonWords)
+			numCommonWords = sortedDic.size() * 0.01;
+
 		for (Map.Entry<String, Integer> entry : sortedDic.entrySet()) {
+			if(numCommonWords > 0){
+				listCommonWords.add(entry.getKey());
+				--numCommonWords;
+				continue;
+			}
 			try {
 				bw.write(entry.getKey() + " : " + entry.getValue());
 				bw.newLine();
@@ -209,6 +241,7 @@ public class ProcessingDoc {
 				e.printStackTrace();
 			}
 		}
+		return listCommonWords;
 	}
 
 	/**
