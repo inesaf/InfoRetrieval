@@ -1,3 +1,5 @@
+import elements.Doc;
+
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -15,43 +17,104 @@ import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Scanner;
 import java.util.TreeMap;
 
-public class ProcessingDoc {
+/**
+ * The application class (main function).
+ */
+public class DocProcessing {
 	
-	private static int totalNumWords = 0;
+	//private static int totalNumWords = 0;
 
 	public static void main(String[] args) {
-		Scanner in = new Scanner(System.in); //perguntar se é necessário realizar o processamento dos dados
-
-		System.out.println("Do you wish to process documents to create a new inverted index? Y/N");
-		String a = in.nextLine();
-		if(a.equalsIgnoreCase("y")){
-			System.out.println("The default path is '/home/ines/Repository'. Do you wish to change it? Y/N");
-			String b = in.nextLine();
-			if(b.equalsIgnoreCase("y")){
-				System.out.println("Specify the new path: ");
-				String path = in.nextLine();
-				processingDocs(path);
-			}
-			if(b.equalsIgnoreCase("n"))
-				processingDocs("/home/ines/Repository");
-		}
-	}
-
-
-	/**
-	 * Processing documents gathered into Repository defined by the path
-	 */
-	public static void processingDocs(String path) {
-
-		Map<String, List<Doc>> invertedIndex = new TreeMap<String, List<Doc>>( ); //inverted index with key and postings
+		ArrayList<Doc> docList = new ArrayList<Doc>();
+		Map<String, List<DocFreq>> invertedIndex = new TreeMap<String, List<DocFreq>>( ); //inverted index with key and postings
 		Map<String, Integer> dictionary = new HashMap<String, Integer>(); //dictionary where the string corresponds to a word in the text and the Integer to its collection frequency
+		
+		String path = "/home/ines/Repository";
+		
+		listDocs(path, docList);
+		parse(docList, invertedIndex, dictionary);
+		hierarchicalSubpace(docList, invertedIndex, dictionary);
+	}
+	
+	
+	/**
+	 * Store in a list Documents' Object with id and path of the corresponding file
+	 * @param path, docList 
+	 */
+	private static void listDocs(String path, ArrayList<Doc> docList) {
+		
 		File docsRepository = new File(path); //files found into the repository
 		File[] filesList = docsRepository.listFiles();
 		Arrays.sort(filesList);
-		readWordDoc(invertedIndex, dictionary, filesList);  
+		
+		int totalNoDocs = filesList.length;
+
+		System.out.println("Total number of documents to index " + totalNoDocs);
+
+		//loop to identify all documents to be indexed (identified by their Project Gutenberg id) 
+		for (int i = 0; i < totalNoDocs; i++){
+			String docName = filesList[i].getName().replaceAll("\\D+","");
+			int docID = Integer.parseInt(docName);
+			docList.add(new Doc(docID, filesList[i].getPath()));
+		}
+		return;
+	}
+	
+	private static void hierarchicalSubpace(ArrayList<Doc> docList, Map<String, List<DocFreq>> invertedIndex, Map<String, Integer> dictionary) {
+		for (Doc d : docList){
+			int i = 1;
+			for (Entry<String, List<DocFreq>> term : invertedIndex.entrySet()){
+				List<DocFreq> listDocsTerm = term.getValue();
+				
+				for (DocFreq posting : listDocsTerm)
+					if (posting.getDocID() == d.getID())
+						d.addIncidenceValue(i); //store incidences into the respective Doc
+				i++;	
+			}
+			System.out.println(d.printDoc(d));
+		}
+	}
+	
+	/**
+	 * Iterate over the array the Or operator with a specified window size
+	 * @return 
+	 * 
+	 */
+	private static int[] OR(int v[], int windowSize){
+		int result = 0;
+		int index = 0;
+		int reducedV[] =  new int[v.length/windowSize];
+		
+		for(int i=0; i<v.length; i+=windowSize){
+			for(int j=i; j<windowSize; j++){
+				//System.out.println(result + " " +  v[j]);
+				result = result | v[j];
+				//System.out.println("result = " + result);
+			}
+			reducedV[index] = result;
+			//System.out.println("rv tem " + reducedV[index] + " indice " + index);
+			result = 0;
+			index++;
+		}
+		System.out.println(reducedV[0]+ " " + reducedV[1]+ " " + reducedV[2]);
+		return reducedV;
+	}
+
+
+	
+
+	/**
+	 * Processing documents gathered into Repository defined by the path
+	 * @param dictionary 
+	 * @param invertedIndex 
+	 */
+	public static void parse(ArrayList<Doc> docList, Map<String, List<DocFreq>> invertedIndex, Map<String, Integer> dictionary) {
+		
+		readWordDoc(invertedIndex, dictionary, docList);  
 		//printInvertedIndex(invertedIndex); 
 		//printMap(dictionary);
 		Scanner in = new Scanner(System.in);
@@ -67,38 +130,30 @@ public class ProcessingDoc {
 			printInvertedIndexToFile(invertedIndex, listCommonWords);
 			
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		dictionary.clear();
-		invertedIndex.clear();
-
+		return; 
 	}
 
 
 	/**
 	 * Document tokenization where each token/word is added to the inverted index and dictionary 
 	 */
-	private static void readWordDoc(Map<String, List<Doc>> invertedIndex, Map<String, Integer> dictionary, File[] docsList) {
+	private static void readWordDoc(Map<String, List<DocFreq>> invertedIndex, Map<String, Integer> dictionary, ArrayList<Doc> docList) {
 		Scanner doc;  
-		int totalNoDocs = docsList.length;
 
-		System.out.println("Total number of documents to index " + totalNoDocs);
-
-		//loop to read all documents (identified by their Project Gutenberg id) 
-		for (int i = 0; i < totalNoDocs; i++){
-			String docName= docsList[i].getName().replaceAll("\\D+","");
-			System.out.println("Processing file: " + docName);
-			int docID = Integer.parseInt(docName);
+		//loop to read all documents (identified by their Project Gutenberg ID) 
+		for (Doc d : docList){
+			System.out.println("Processing file: " + d.getID());
 			try {  
-				doc = new Scanner(new FileReader(docsList[i].getPath()));  
+				doc = new Scanner(new FileReader(d.getPath()));  
 			}  
 			catch (FileNotFoundException e) {  
 				System.err.println(e);  
 				return;
 			}
 
-			// the header and footer is discarded
+			// the header and footer are discarded
 			while (doc.hasNextLine()) {  
 				String line = doc.nextLine();
 				if(line.contains("START OF THIS PROJECT GUTENBERG"))
@@ -106,7 +161,7 @@ public class ProcessingDoc {
 				else if (line.contains("END OF THIS PROJECT GUTENBERG"))
 					break;
 				else 
-					putIntoStructures(invertedIndex, dictionary, line, docID);
+					putIntoStructures(invertedIndex, dictionary, line, d.getID());
 			}
 		}
 	}
@@ -115,41 +170,41 @@ public class ProcessingDoc {
 	 * Line by line each word is added to the inverted index and the document is added to its list
 	 * In parallel each word is also added to the dictionary where its frequency collection is defined
 	 */
-	public static void putIntoStructures(Map<String, List<Doc>> invertedIndex, Map<String, Integer> dictionary, String line, int docID) {
+	public static void putIntoStructures(Map<String, List<DocFreq>> invertedIndex, Map<String, Integer> dictionary, String line, int docID) {
 
 		for (String word : line.split("\\W+")) {
 			String _word = word.replaceAll("_", ""); //includes the case of _word_ e.g.
 			String key = _word.toLowerCase();
 			totalNumWords++;
-			List<Doc> postings = invertedIndex.get(key);
+			List<DocFreq> postings = invertedIndex.get(key);
 
 			if (postings == null){ //the key doesn't exist in the inverted index
-				postings = new ArrayList<Doc>(); 
+				postings = new ArrayList<DocFreq>(); 
 				invertedIndex.put(key, postings);
-				postings.add(new Doc(docID, 1));
+				postings.add(new DocFreq(docID, 1));
 				dictionary.put(key, 1);
 			}
 			else {
-				Doc d = searchDocID(postings, docID);
+				DocFreq d = searchDocID(postings, docID);
 				int freq;
 				int count = dictionary.get(key);
 				dictionary.put(key, count+1);
 				
 				if (d == null) { //first time that key appears in docID and need to be added
-					postings.add(new Doc(docID, 1));
+					postings.add(new DocFreq(docID, 1));
 				}
 				else {
-					freq = d.getFrequency();
-					d.setFrequency(freq+1);
+					freq = d.getDocFreq();
+					d.setDocFreq(freq+1);
 				}
 			}
 		}
 	}
 
 
-	private static Doc searchDocID(List<Doc> docList, int docID) {
-		for(Doc d : docList)
-			if(d.getID() == docID)
+	private static DocFreq searchDocID(List<DocFreq> docList, int docID) {
+		for(DocFreq d : docList)
+			if(d.getDocID() == docID)
 				return d;
 		
 		return null;
@@ -160,7 +215,7 @@ public class ProcessingDoc {
 	/**
 	 * Print the inverted index into a file  
 	 */
-	private static void printInvertedIndexToFile(Map<String, List<Doc>> invertedIndex, ArrayList<String> listCommonWords) throws IOException {
+	private static void printInvertedIndexToFile(Map<String, List<DocFreq>> invertedIndex, ArrayList<String> listCommonWords) throws IOException {
 
 		File fout = new File("inverted_index.txt");
 		FileOutputStream fos = new FileOutputStream(fout);
@@ -171,9 +226,9 @@ public class ProcessingDoc {
 			if(listCommonWords.contains(key))
 				continue;
 			bw.write(key + " -> ");
-			List<Doc> postings = invertedIndex.get(key);
-			for(Doc d : postings)
-				bw.write(d.getID() + " : " + d.getFrequency() + " ");
+			List<DocFreq> postings = invertedIndex.get(key);
+			for(DocFreq d : postings)
+				bw.write(d.getDocID() + " : " + d.getDocFreq() + " ");
 			bw.newLine();
 		}
 		int commonWords = listCommonWords.size();
@@ -247,7 +302,7 @@ public class ProcessingDoc {
 	/**
 	 * Auxiliary method to print the inverted index in the console  
 	 */
-	private static void printInvertedIndex(Map<String, List<Doc>> invertedIndex) {
+	private static void printInvertedIndex(Map<String, List<DocFreq>> invertedIndex) {
 		System.out.println("-----------------------------------------------");  
 		System.out.println("    Occurrences    Word");  
 
