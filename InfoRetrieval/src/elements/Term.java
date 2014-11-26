@@ -2,18 +2,19 @@ package elements;
 
 public class Term {
 	
-	private Term word;
+	private String word;
 	private int cf; //collection frequency
 	
-	public Term(Term word) {
-		this.setWord(word);
+	public Term(String word) {
+		this.word = word;
+		this.cf = 1;
 	}
 
-	public Term getWord() {
+	public String getWord() {
 		return word;
 	}
 
-	public void setWord(Term word) {
+	public void setWord(String word) {
 		this.word = word;
 	}
 
@@ -23,5 +24,10 @@ public class Term {
 
 	public void setCf(int cf) {
 		this.cf = cf;
+	}
+	
+	@Override
+	public String toString(){
+		return getWord() + ":" + getCf() + "\n";
 	}
 }

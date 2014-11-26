@@ -1,6 +1,4 @@
 package index;
-import elements.*;
-
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -9,21 +7,25 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
+import java.util.Map.Entry;
+
+import elements.Doc;
+import elements.Posting;
 
 /**
  * The application class (main function).
  */
 public class DocProcessing {
+
+	private static int window = 2;
 
 	public static void main(String[] args) {
 		
@@ -35,13 +37,25 @@ public class DocProcessing {
 		/**Parse text of each document within the repository and inverted index filling*/
 		InvertedIndex invertedIndex = new InvertedIndex();
 		fillInvertedIndex(repository, invertedIndex); //put into other class
-		//System.out.println(invertedIndex.toString());
+		System.out.println(invertedIndex.toString());
 		
 		/**The incidence list of each value is added*/
 		repository.fillDocList(invertedIndex);
 		System.out.println(repository.toString());
 		
-		//Map<String, Integer> dictionary = new HashMap<String, Integer>(); //dictionary where the string corresponds to a word in the text and the Integer to its collection frequency
+		/**The hierarchy of each document is built*/
+		repository.fillDocsHierarchy(window, invertedIndex.getInvertedIndex().size());
+		
+		/** dictionary where the string corresponds to a word in the text and the Integer to its collection frequency*/
+		Dictionary dictionary = new Dictionary();
+		dictionary.fillTermList(invertedIndex);
+		
+		/**Map<String, Integer> dictionarySortedByKey = dictionary.sortByKey();
+		System.out.println("\nDictionary sorted by key\n" + printMap(dictionarySortedByKey));
+		
+		Map<String, Integer> dictionarySortedByValue = dictionary.sortByValue();
+		System.out.println("\nDictionary sorted by value\n" + printMap(dictionarySortedByValue));*/
+		
 		//hierarchicalSubpace(docList, invertedIndex, dictionary);
 		
 		
@@ -106,34 +120,15 @@ public class DocProcessing {
 		}
 		return;
 	}
-
-
-	/**
-	 * Processing documents gathered into Repository defined by the path
-	 * @param dictionary 
-	 * @param invertedIndex 
-	 */
-	/**public static void parse(ArrayList<Doc> docList, InvertedIndex invertedIndex, Map<String, Integer> dictionary) {
+	
+	public static String printMap(Map<String, Integer> tree){
+		String result = "";
 		
-		readWordDoc(invertedIndex, dictionary, docList);  
-		Scanner in = new Scanner(System.in);
-		System.out.println("Do you want to remove the most common words of the inverted index? Y/N");
-		String c = in.nextLine();
-		boolean removeCommonWords = false;
-		if(c.equalsIgnoreCase("y"))
-			removeCommonWords = true;
+		for(Entry<String, Integer> element : tree.entrySet()) 
+			result += element.getKey() + " : " + element.getValue() + "\n";
 		
-		try {
-			ArrayList<String> listCommonWords = printDicToFile(dictionary, removeCommonWords);
-			System.out.println(listCommonWords.toString());
-			//printInvertedIndexToFile(invertedIndex, listCommonWords);
-			
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		return; 
-	}*/
-
+		return result;
+	}
 
 	
 	/**private static void hierarchicalSubpace(ArrayList<Doc> docList, Map<String, List<Posting>> invertedIndex, Map<String, Integer> dictionary) {
@@ -175,74 +170,5 @@ public class DocProcessing {
 		System.out.println(reducedV[0]+ " " + reducedV[1]+ " " + reducedV[2]);
 		return reducedV;
 	}*/
-
-
-	
-
-	/**
-	 * HashMpa - Sort words in the dictionary by descending order of frequency
-	 */
-	private static Map<String, Integer> sortByComparator(Map<String, Integer> unsortMap) {
-
-		// Convert Map to List
-		List<Map.Entry<String, Integer>> list = 
-				new LinkedList<Map.Entry<String, Integer>>(unsortMap.entrySet());
-
-		// Sort list with comparator, to compare the Map values
-		Collections.sort(list, new Comparator<Map.Entry<String, Integer>>() {
-			public int compare(Map.Entry<String, Integer> o1,
-					Map.Entry<String, Integer> o2) {
-				return (o2.getValue()).compareTo(o1.getValue());
-			}
-		});
-
-		// Convert sorted map back to a Map
-		Map<String, Integer> sortedMap = new LinkedHashMap<String, Integer>();
-		for (Iterator<Map.Entry<String, Integer>> it = list.iterator(); it.hasNext();) {
-			Map.Entry<String, Integer> entry = it.next();
-			sortedMap.put(entry.getKey(), entry.getValue());
-		}
-		return sortedMap;
-	}
-
-	/**
-	 * Print dictionary of words and collection frequency into a file  
-	 * @param removeCommonWords 
-	 */
-	private static ArrayList<String> printDicToFile(Map<String, Integer> dic, boolean removeCommonWords) throws FileNotFoundException {
-		File fout = new File("dictionary.txt");
-		FileOutputStream fos = new FileOutputStream(fout);
-		BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(fos));
-		Map<String, Integer> sortedDic = sortByComparator(dic);
-		
-		double numCommonWords = 0;
-		ArrayList<String> listCommonWords = new ArrayList<String>();
-		if(removeCommonWords)
-			numCommonWords = sortedDic.size() * 0.01;
-
-		for (Map.Entry<String, Integer> entry : sortedDic.entrySet()) {
-			if(numCommonWords > 0){
-				listCommonWords.add(entry.getKey());
-				--numCommonWords;
-				continue;
-			}
-			try {
-				bw.write(entry.getKey() + " : " + entry.getValue());
-				bw.newLine();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
-		return listCommonWords;
-	}
-
-	/**
-	 * Auxiliary method to print the inverted index in the console  
-	 */
-	private static void printMap(Map<String, Integer> map) {
-		for (Map.Entry<String, Integer> entry : map.entrySet()) {
-			System.out.println(entry.getKey() + " : " + entry.getValue());
-		}
-	}
 
 }

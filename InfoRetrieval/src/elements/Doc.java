@@ -3,6 +3,7 @@ package elements;
 import java.util.ArrayList;
 import java.lang.String;
 
+import hierarchy.*;
 
 public class Doc{
 
@@ -10,14 +11,17 @@ public class Doc{
 	private int gutenbergID;
 	private String path;
 	private int totalNoTerms;
-	ArrayList<Integer> incidenceList = new ArrayList<Integer>();
+	ArrayList<Integer> incidenceList;
 	private String title; //not yet used
+	private Hierarchy hierarchy;
 	
 
 	public Doc(int ID, int gutenberID, String path) {
 		this.docID = ID;
 		this.gutenbergID = gutenberID;
 		this.path = path;
+		this.incidenceList = new ArrayList<Integer>();
+		this.hierarchy = new Hierarchy();
 	}
 
 	public int getID() {
@@ -43,6 +47,10 @@ public class Doc{
 	public void setPath(String path) {
 		this.path = path;
 	}
+	
+	public ArrayList<Integer> getIncidenceList(){
+		return incidenceList;
+	}
 
 	public void addIncidenceValue(int value){
 		incidenceList.add(value);
@@ -62,6 +70,14 @@ public class Doc{
 
 	public void setTitle(String title) {
 		this.title = title;
+	}
+	
+	public Hierarchy getHierarchy() {
+		return hierarchy;
+	}
+
+	public void setHierarchy(Hierarchy hierarchy) {
+		this.hierarchy = hierarchy;
 	}
 	
 	public String printDoc(){

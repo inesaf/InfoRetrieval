@@ -1,16 +1,16 @@
-package elements;
+package index;
 
-import index.InvertedIndex;
+import hierarchy.Hierarchy;
+import hierarchy.SparseVector;
 
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Scanner;
+
+import elements.*;
 
 public class Repository {
 
@@ -30,7 +30,7 @@ public class Repository {
 	public void setPath(String path) {
 		this.path = path;
 	}
-	
+
 	public int getSizeRepository(){
 		return docList.size();
 	}
@@ -62,7 +62,7 @@ public class Repository {
 				return d;
 		return null;
 	}
-	
+
 	/**
 	 * Traverses the inverted index and fill the documents with the respective words index
 	 */
@@ -79,7 +79,7 @@ public class Repository {
 			termIndex++;
 		}
 	}
-	
+
 	/**
 	 * Method to print the inverted index in the console  
 	 */
@@ -89,8 +89,28 @@ public class Repository {
 		String result = "\n";
 		for (Doc d : docList){
 			result += " " + d.printDoc() + "\n";
-			
+
 		}
 		return repositoryPath + result;
+	}
+
+	public void fillDocsHierarchy(int window, int dicSize) {
+		for(Doc d : docList){
+			ArrayList<Integer> incidenceList = d.getIncidenceList();
+			Hierarchy hierarchy = d.getHierarchy();
+			SparseVector vecOriginal = hierarchy.addOriginalLevel(0, incidenceList);
+			//System.out.println(vecOriginal.toString());
+			SparseVector vecAggre = vecOriginal.vecReduction1(window, dicSize);
+			//start to aggregate until the vector reaches the size = 2 (NEED TO BE CALCULATED)
+			int i = 0;
+			while(vecAggre.getVec().size()>2) {
+				vecAggre = vecAggre.vecReduction(window);
+				hierarchy.addLevel(i, vecAggre);
+				i++;
+			}
+			
+			System.out.println(hierarchy.toString(d.getID()));
+		}
+		return;
 	}
 }
