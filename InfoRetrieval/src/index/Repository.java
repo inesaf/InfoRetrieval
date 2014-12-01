@@ -39,7 +39,7 @@ public class Repository {
 	 * Store in a list Documents' Object with id and path of the corresponding file
 	 */
 	public void insertDocsFromFolder() {
-		File docsRepository = new File(path); //files found into the repository
+		File docsRepository = new File(path); //found files into the repository
 		File[] filesList = docsRepository.listFiles();
 		Arrays.sort(filesList);
 

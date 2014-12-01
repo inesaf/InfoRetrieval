@@ -9,7 +9,7 @@ import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URL;
 
-public class CollectDocs {
+public class CollectDocsAux {
 
 	static int[] choosenBooks = new int[]{1342, 1952, 11, 76, 5200, 1661, 1232, 2001, 23};
 	int numChoosenBooks = choosenBooks.length;

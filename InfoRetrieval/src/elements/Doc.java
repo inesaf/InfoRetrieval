@@ -15,6 +15,14 @@ public class Doc{
 	private String title; //not yet used
 	private Hierarchy hierarchy;
 	
+	/**
+	 * Constructor to be used by a query
+	 */
+	public Doc(int gutenberID) {
+		this.gutenbergID = gutenberID;
+		this.incidenceList = new ArrayList<Integer>();
+		this.hierarchy = new Hierarchy();
+	}
 
 	public Doc(int ID, int gutenberID, String path) {
 		this.docID = ID;
