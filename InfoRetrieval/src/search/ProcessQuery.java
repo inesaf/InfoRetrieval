@@ -1,129 +1,50 @@
 package search;
 
 import index.InvertedIndex;
-import index.Repository;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Scanner;
 
 import elements.Doc;
-import elements.Posting;
 
 
 public class ProcessQuery {
 
-	private static InvertedIndex invertedIndexQuery;
 	private static List<Integer> docIDList;
-	String path = "/home/ines/Query/pg11.txt";
 
 	public ProcessQuery(){
-		invertedIndexQuery = new InvertedIndex();
-		docIDList = new ArrayList<Integer>();
+		setDocIDList(new ArrayList<Integer>());
 	}
 
-
-
-	/**Identify and get query document*/
-
-
-	/**
-	 * PROVISÓRIO (PÔR NUMA CLASSE - PARSE)
-	 * Document tokenization where each token/word is added to the inverted index
-	 * @return 
-	 */
-	public List<Integer> identifyDocs(InvertedIndex invertedIndex) {
-		Scanner doc;  
-		try {  
-			doc = new Scanner(new FileReader(path));  
-		}  
-		catch (FileNotFoundException e) {  
-			System.err.println(e);  
-			return null;
-		}
-
-		// the header and footer are discarded
-		while (doc.hasNextLine()) {  
-			String line = doc.nextLine();
-			if(line.contains("START OF THIS PROJECT GUTENBERG"))
-				continue;				
-			else if (line.contains("END OF THIS PROJECT GUTENBERG"))
-				break;
-			else 
-				parseLine2(invertedIndex, line);
-		}
-
+	public List<Integer> getDocIDList() {
+		Collections.sort(docIDList);
 		return docIDList;
 	}
 
-	private static void parseLine(InvertedIndex invertedIndex, String line) {
-		String _word;
-		String term;
-		List<Posting> postingList;
-
-		//vendo palavra a palavra guardar numa estrutura os documentos que têm essa palavra
-		for (String word : line.split("\\W+")) {
-			_word = word.replaceAll("_", ""); //includes the case of _word_ e.g.
-			term = _word.toLowerCase();
-			if(invertedIndexQuery.getKey(term) == null) { //tem de se colocar os documentos onde essa palavra aparece
-				postingList = invertedIndex.getKey(term);
-				if(postingList != null)
-					invertedIndexQuery.insertPostingList(term, postingList);
-			}
-		}
-
-		return;
-	}
-
-	private static void parseLine2(InvertedIndex invertedIndex, String line) {
-		String _word;
-		String term;
-		List<Posting> postingList;
-
-		//nº documentos presentes na coleccao
-
-		//vendo palavra a palavra guardar numa estrutura os documentos que têm essa palavra
-		for (String word : line.split("\\W+")) {
-			_word = word.replaceAll("_", ""); //includes the case of _word_ e.g.
-			term = _word.toLowerCase();
-			if(invertedIndexQuery.getKey(term) == null) { //tem de se colocar os documentos onde essa palavra aparece
-				postingList = invertedIndex.getKey(term);
-				if(postingList != null){
-					invertedIndexQuery.insertPostingList(term, postingList);
-					for(Posting posting : postingList){ //pôr numa função
-						int docID = posting.getDocID();
-						if (!docIDList.contains(docID))
-							docIDList.add(docID);
-					}
-				}
-			}
-		}
-
-		return;
+	public static void setDocIDList(List<Integer> docIDList) {
+		Collections.sort(docIDList);
+		ProcessQuery.docIDList = docIDList;
 	}
 	
-	//transformar a query como um doc (ie. ter as hierarquias)
-	private Doc setQuery2Doc(){
-		int gutenbergID = Integer.parseInt(path.replaceAll("\\D+",""));
-		Doc query = new Doc(gutenbergID);
-		return query;
+	@Override
+	public String toString(){
+		String result = "List of docIDs that have one or more words of the query [ ";
+		for(int similarDoc : docIDList)
+			result += similarDoc + " ";
+		
+		return result + "]"; 
 	}
-	
-	//comecar o processo de procura pelas hierarquias
-	//getDocs da docIDList indicada
-	//comecar pelo nivel mais abaixo
-	//em cada nivel contar o nº1
-	//guardar os q são iguais à query
+
 
 	/**
-	 * Gather documents which have at least one word of the query 
+	 * Gather documents which have at least one word of the query  -----> NOT USED I THINK
 	 */
 	private static void identifyDocs(String[] query) throws IOException {
 		File fin = new File("inverted_index.txt"); 
@@ -144,5 +65,45 @@ public class ProcessQuery {
 
 		br.close();
 	}
+
+	public Doc queryProcessing(String queryPath, int queryID, InvertedIndex invertedIndex) {
+		int option = askQueryType(queryPath);
+		Doc queryDoc = null;
+		if(option == 1){
+			queryDoc = askForQuery(queryID, queryPath);
+			invertedIndex.addQuery2InvertedIndex(queryDoc);
+		}
+		if(option == 2){
+			queryDoc = processQueryFile(queryID, queryPath);
+			invertedIndex.addQueryFile2InvertedIndex(queryDoc);
+		}
+		
+		return queryDoc;
+
+	}
+
+	private int askQueryType(String queryPath) {
+		Scanner in = new Scanner(System.in);
+		System.out.println("\nTo do a search choose among the following options: ");
+		System.out.println("1 - if you pretend to type a query");
+		System.out.println("2 - if you pretend to use the document that is in " + queryPath);
+		return in.nextInt();
+	}
+
+	public Doc processQueryFile(int queryID, String queryPath) {
+		File docsRepository = new File(queryPath); //found files into the repository
+		File[] filesList = docsRepository.listFiles();
+
+		String nameFile = filesList[0].getName(); //get the first file (since its the only one within the directory 'queryPath')
+		int gutenbergID = Integer.parseInt(nameFile.replaceAll("\\D+",""));
+
+		return new Doc(queryID, gutenbergID, queryPath+"/"+nameFile);
+	}
+		
+
+	public Doc askForQuery(int queryID, String queryPath) {
+		return new Doc(queryID, 0, null);
+	}
+
 
 }

@@ -11,13 +11,18 @@ public class SparseVector {
 	 * with size 1.
 	 */
 	public SparseVector() {
-		this.vector = new ArrayList<>();
+		this.vector = new ArrayList<Integer>();
+	}
+	
+	public SparseVector(int size){
+		this.vector = new ArrayList<Integer>(size);
 	}
 
 	public SparseVector(ArrayList<Integer> incidenceList){
 		this.vector = incidenceList;
 	}
 
+	
 	/**
 	 * Creates a new SparseVector based on another (the same effect as the function copy())
 	 * @param original 
@@ -40,10 +45,18 @@ public class SparseVector {
 	 * @return the number of 1s (positions set TRUE) in this vector
 	 */
 	public int getNum1s() {
+		int sum = 0;
+		for (int value : vector)
+			sum += value;
+		return sum;
+		
+	}
+	
+	public int getSize(){
 		return vector.size();
 	}
 	
-	public SparseVector vecReduction1(int window, int dicSize) {
+	public SparseVector vecReduction1(ArrayList<Integer> incidenceList, int window, int dicSize) {
 		//int aggregSize = (int)Math.ceil((double)vector.size()/window); //round upny
 		SparseVector aggregVec = new SparseVector();
 
@@ -51,7 +64,7 @@ public class SparseVector {
 		for(int i=0; i<dicSize; i+=window) {
 			int result = 0;
 			for(int j=i; j<i+window && j<dicSize; j++) {
-				if(vector.contains(j)) //se j estiver no vector
+				if(incidenceList.contains(j)) //se j estiver no vector
 					result += 1;
 			}
 			int index = aggregVec.getVec().size();
@@ -99,7 +112,7 @@ public class SparseVector {
 	public String toString(){
 		String result = "";
 		for (int value : vector){
-			result += "->" + value;
+			result += "|" + value;
 		}
 		return result;
 	}

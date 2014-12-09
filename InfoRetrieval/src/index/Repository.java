@@ -1,8 +1,5 @@
 package index;
 
-import hierarchy.Hierarchy;
-import hierarchy.SparseVector;
-
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -10,17 +7,21 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import elements.*;
+import search.ProcessQuery;
+import elements.Doc;
+import elements.Posting;
 
 public class Repository {
 
 	private String path;
+	private int hierarchySize;
 	private static ArrayList<Doc> docList;
 
 
 	public Repository(String path) {
 		this.path = path;
 		docList = new ArrayList<Doc>();
+		hierarchySize = 0;
 	}
 
 	public String getPath() {
@@ -35,6 +36,15 @@ public class Repository {
 		return docList.size();
 	}
 
+	public int getHierarchySize(){
+		return hierarchySize;
+
+	}
+
+	public void setHierarchySize(int newHierarchy) {
+		this.hierarchySize = newHierarchy;
+	}
+
 	/**
 	 * Store in a list Documents' Object with id and path of the corresponding file
 	 */
@@ -45,9 +55,7 @@ public class Repository {
 
 		int totalNoDocs = filesList.length;
 
-		System.out.println("Total number of documents to index " + totalNoDocs);
-
-		//loop to identify all documents to be indexed (identified by their Project Gutenberg id) 
+		//loop to identify all documents to be indexed
 		for (int i = 0; i < totalNoDocs; i++){
 			String nameFile = filesList[i].getName();
 			int gutenbergID = Integer.parseInt(nameFile.replaceAll("\\D+",""));
@@ -66,7 +74,7 @@ public class Repository {
 	/**
 	 * Traverses the inverted index and fill the documents with the respective words index
 	 */
-	public void fillDocList(InvertedIndex invertedIndex) {
+	public void buildIncidenceListDocList(InvertedIndex invertedIndex) {
 		Map<String, List<Posting>> index = invertedIndex.getInvertedIndex();
 		int docID;
 		int termIndex = 0;
@@ -80,6 +88,13 @@ public class Repository {
 		}
 	}
 
+	public void buildHierarchyDocList(int window, int dicSize) {
+		for(Doc d : docList)
+			hierarchySize = d.fillDocHierarchy(window, dicSize);
+		setHierarchySize(hierarchySize);
+		return;
+	}
+
 	/**
 	 * Method to print the inverted index in the console  
 	 */
@@ -88,29 +103,53 @@ public class Repository {
 		String repositoryPath = "Repository of folders in " + path;
 		String result = "\n";
 		for (Doc d : docList){
-			result += " " + d.printDoc() + "\n";
+			result += " " + d.toString() + "\n";
 
 		}
 		return repositoryPath + result;
 	}
 
-	public void fillDocsHierarchy(int window, int dicSize) {
-		for(Doc d : docList){
-			ArrayList<Integer> incidenceList = d.getIncidenceList();
-			Hierarchy hierarchy = d.getHierarchy();
-			SparseVector vecOriginal = hierarchy.addOriginalLevel(0, incidenceList);
-			//System.out.println(vecOriginal.toString());
-			SparseVector vecAggre = vecOriginal.vecReduction1(window, dicSize);
-			//start to aggregate until the vector reaches the size = 2 (NEED TO BE CALCULATED)
-			int i = 0;
-			while(vecAggre.getVec().size()>2) {
-				vecAggre = vecAggre.vecReduction(window);
-				hierarchy.addLevel(i, vecAggre);
-				i++;
+
+	public void printHierarchies(ProcessQuery query, Doc queryDoc) {
+		for(int i=getHierarchySize()-1; i>=0; i--){
+			int sizeQ = queryDoc.getHierarchy().getLevel(i).getVec().size();
+			int num1sQuery = queryDoc.getHierarchy().getLevel(i).getNum1s();
+			System.out.println("\nque " + queryDoc.getID() + " level " + i + " num1sQue " + num1sQuery + " size "+ sizeQ + " " + queryDoc.getHierarchy().getLevel(i));
+
+			for(int docID : query.getDocIDList()){
+				Doc d = getDoc(docID); //obter o doc através do ID
+				int num1sDoc = d.getHierarchy().getLevel(i).getNum1s();
+				int size = d.getHierarchy().getLevel(i).getVec().size();
+				System.out.println("doc " + d.getID() + " level " + i +" num1sDoc "+ num1sDoc + " size "+ size + " " + d.getHierarchy().getLevel(i));
 			}
-			
-			System.out.println(hierarchy.toString(d.getID()));
 		}
-		return;
+
+	}
+
+	public int levelToBeginSearch(ProcessQuery query) {
+		for(int i=getHierarchySize()-1; i>=0; i--){
+			for(int docID : query.getDocIDList()){
+				Doc d = getDoc(docID); //obter o doc através do ID
+				int num1sDoc = d.getHierarchy().getLevel(i).getNum1s();
+				int sizeVec = d.getHierarchy().getLevel(i).getVec().size();
+				//check from what level the incidence list begins to have differences
+				if(num1sDoc != sizeVec)
+					return i;
+			}
+		}
+		return 0;
+	}
+
+	public void rankDocs(int level, ProcessQuery query, Doc queryDoc) {
+		// begin to calculate the hamming distance from the given level
+		for (int i=level; i>=0; i--){
+			System.out.println("\nlevel " + i);
+			ArrayList<Integer> vecQuery = queryDoc.getHierarchy().getLevel(i).getVec();
+			for(int docID : query.getDocIDList()){
+				Doc d = getDoc(docID);
+				int result = d.calculateHammingDistance2(vecQuery, i); 
+				System.out.println("d" + d.getGutenberID() + " " + result);
+			}
+		}
 	}
 }
